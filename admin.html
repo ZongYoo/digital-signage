@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 登入守衛：未登入則立即跳回登入頁，並隱藏頁面避免內容閃現 -->
+  <script>
+    if (sessionStorage.getItem('ds_auth') !== 'true') {
+      document.documentElement.style.display = 'none';
+      location.replace('login.html');
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>數位看板 — 後台管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .drag-handle { cursor: grab; }
+    .drag-handle:active { cursor: grabbing; }
+    tr.dragging { opacity: .35; }
+    tr.drag-over td { box-shadow: inset 0 -3px 0 #6366f1; }
+    .url-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    /* ── 主要格線 ── */
+    #main-grid {
+      display: grid;
+      gap: 1.5rem;
+      align-items: stretch;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 1024px) {
+      #main-grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      }
+    }
+
+    /* ── 固定預覽側欄（左側留白區，不影響主要格線） ── */
+    #preview-col {
+      display: none;
+      position: fixed;
+      /* 對齊 max-w-screen-xl 容器的左緣再減 0.75rem 空隙 */
+      right: calc(50vw + 40rem + 0.75rem);
+      top: 5rem;
+      width: calc(50vw - 40rem - 1.75rem);
+      min-width: 160px;
+      max-width: 280px;
+      max-height: calc(100vh - 6rem);
+      z-index: 25;
+      opacity: 0;
+      transform: translateX(-14px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+    }
+    /* 僅在螢幕夠寬（左側有足夠留白）才顯示 */
+    @media (min-width: 1600px) {
+      #preview-col { display: flex; flex-direction: column; }
+    }
+    #preview-col.preview-open {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen antialiased">
+
+  <!-- ── Top Navigation ──────────────────────────────── -->
+  <nav class="bg-slate-800 shadow-lg sticky top-0 z-30">
+    <div class="max-w-screen-xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-500 rounded-xl w-9 h-9 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div class="leading-tight">
+          <p class="text-white font-semibold text-sm">數位看板後台</p>
+          <p class="text-slate-400 text-xs hidden sm:block">Digital Signage CMS</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="index.html" target="_blank"
+           class="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs sm:text-sm
+                  px-3 sm:px-4 py-2 rounded-xl transition-colors whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+          <span class="hidden sm:inline">預覽看板</span>
+        </a>
+        <button id="logout-btn"
+          class="flex items-center gap-1.5 bg-slate-700 hover:bg-red-600 text-slate-300 hover:text-white
+                 text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-xl transition-colors whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          <span class="hidden sm:inline">登出</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── 固定預覽側欄（在主要格線之外，浮於左側留白區） ── -->
+  <div id="preview-col">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
+      <div class="px-4 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></div>
+        <h2 class="font-semibold text-slate-700 text-sm">內容預覽</h2>
+      </div>
+      <div class="flex-1 flex flex-col p-3 gap-2 overflow-y-auto">
+        <div id="preview-content"
+          class="w-full rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center text-slate-400 text-xs"
+          style="aspect-ratio:16/9">
+        </div>
+        <p id="preview-label" class="hidden text-xs text-slate-400 text-center truncate px-1"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main ──────────────────────────────────────────── -->
+  <main class="max-w-screen-xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div id="main-grid">
+
+      <!-- ── 新增表單 Card ────────────────────────────── -->
+      <div class="flex flex-col">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
+
+          <!-- Card Header -->
+          <div class="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-4">
+            <h2 class="text-white font-semibold">新增播放項目</h2>
+            <p class="text-indigo-100 text-xs mt-0.5">填入資訊後按下「新增」即可加入清單</p>
+          </div>
+
+          <div class="p-5 sm:p-6 flex-1 overflow-y-auto">
+            <form id="add-form" class="space-y-4">
+
+              <!-- Name -->
+              <div>
+                <label for="f-name" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+                  內容名稱 <span class="text-red-400 normal-case font-normal">必填</span>
+                </label>
+                <input id="f-name" type="text" placeholder="例：首頁廣告圖" required
+                  class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                         placeholder-slate-300 transition focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent" />
+              </div>
+
+              <!-- Type -->
+              <div>
+                <label for="f-type" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">類型</label>
+                <select id="f-type"
+                  class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                         bg-white transition focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent">
+                  <option value="image">圖片</option>
+                  <option value="video">影片</option>
+                </select>
+              </div>
+
+              <!-- URL -->
+              <div>
+                <label for="f-url" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+                  網址 / 本機路徑 <span class="text-red-400 normal-case font-normal">必填</span>
+                </label>
+                <div class="flex gap-2">
+                  <input id="f-url" type="text" placeholder="https://… 或 media/filename.mp4" required
+                    class="flex-1 min-w-0 px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                           placeholder-slate-300 transition focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent" />
+                  <label for="f-file"
+                    class="cursor-pointer flex-shrink-0 px-3 py-2.5 bg-slate-100 hover:bg-slate-200
+                           text-slate-600 text-xs sm:text-sm font-medium rounded-xl transition-colors whitespace-nowrap select-none">
+                    選擇檔案
+                  </label>
+                  <input id="f-file" type="file" accept="image/*,video/mp4,video/webm" class="hidden" />
+                </div>
+                <p id="file-hint"
+                  class="hidden mt-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700 leading-relaxed"></p>
+              </div>
+
+              <!-- Duration -->
+              <div>
+                <label for="f-duration" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">播放秒數</label>
+                <input id="f-duration" type="number" min="1" value="5"
+                  class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                         transition focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent
+                         disabled:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed" />
+                <p id="duration-video-hint"
+                  class="hidden mt-1.5 text-xs text-indigo-400 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                  </svg>
+                  影片將播放至結束後自動切換
+                </p>
+              </div>
+
+              <!-- Submit -->
+              <button type="submit"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold
+                       py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2 mt-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                新增至清單
+              </button>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 播放清單 Card ────────────────────────────── -->
+      <div class="flex flex-col">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
+
+          <!-- Card Header -->
+          <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+            <div>
+              <h2 class="font-semibold text-slate-700">目前播放清單</h2>
+              <p class="text-slate-400 text-xs mt-0.5">
+                拖曳 <span class="font-mono bg-slate-100 px-1 rounded text-slate-500">⠿</span> 或點擊 ▲▼ 調整順序
+              </p>
+            </div>
+            <span id="item-count"
+              class="flex-shrink-0 bg-indigo-50 text-indigo-500 text-xs font-semibold px-2.5 py-1 rounded-full">
+              0 個項目
+            </span>
+          </div>
+
+          <!-- Table -->
+          <div class="overflow-auto flex-1" style="max-height: calc(7 * 57px + 40px);">
+            <table class="w-full min-w-[600px] text-sm">
+              <thead class="sticky top-0 z-10">
+                <tr class="bg-slate-50 text-slate-400 text-xs font-semibold uppercase tracking-wide border-b border-slate-100">
+                  <th class="px-3 py-3 text-center w-8"></th>
+                  <th class="px-4 py-3 text-left w-8">#</th>
+                  <th class="px-4 py-3 text-left">名稱</th>
+                  <th class="px-4 py-3 text-left">類型</th>
+                  <th class="px-4 py-3 text-left">網址</th>
+                  <th class="px-4 py-3 text-left">秒數</th>
+                  <th class="px-4 py-3 text-left">操作</th>
+                </tr>
+              </thead>
+              <tbody id="playlist-body"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── 跑馬燈設定 Card（全寬） ──────────────── -->
+    <div class="mt-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+
+        <!-- Card Header -->
+        <div class="bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-4">
+          <h2 class="text-white font-semibold">跑馬燈設定</h2>
+          <p class="text-teal-100 text-xs mt-0.5">在看板畫面底部顯示橫向滾動文字</p>
+        </div>
+
+        <div class="p-5 sm:p-6">
+          <div class="flex flex-col sm:flex-row gap-5 sm:items-end">
+
+            <!-- 啟用開關 -->
+            <div class="flex-shrink-0">
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">狀態</p>
+              <label class="relative inline-flex items-center gap-3 cursor-pointer select-none">
+                <div class="relative">
+                  <input type="checkbox" id="ticker-enabled" class="sr-only peer" />
+                  <div class="w-11 h-6 bg-slate-200 rounded-full peer transition-colors
+                              peer-checked:bg-teal-500
+                              after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                              after:bg-white after:rounded-full after:h-5 after:w-5
+                              after:transition-all peer-checked:after:translate-x-full"></div>
+                </div>
+                <span class="text-sm font-medium text-slate-600">啟用跑馬燈</span>
+              </label>
+            </div>
+
+            <!-- 文字輸入 -->
+            <div class="flex-1 min-w-0">
+              <label for="ticker-text-input"
+                class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">跑馬燈文字</label>
+              <input type="text" id="ticker-text-input"
+                placeholder="歡迎光臨 XXX，今日特惠中..."
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                       placeholder-slate-300 transition focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-transparent" />
+            </div>
+
+            <!-- 速度 -->
+            <div class="w-full sm:w-36 flex-shrink-0">
+              <label for="ticker-speed"
+                class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">速度（秒 / 輪）</label>
+              <input type="number" id="ticker-speed" value="30" min="5" max="120"
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                       transition focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-transparent" />
+            </div>
+
+            <!-- 儲存 -->
+            <button id="ticker-save"
+              class="flex-shrink-0 bg-teal-500 hover:bg-teal-600 active:bg-teal-700
+                     text-white font-semibold py-2.5 px-6 rounded-xl transition-colors text-sm whitespace-nowrap self-end">
+              儲存設定
+            </button>
+
+          </div>
+          <p class="mt-3 text-xs text-slate-400">
+            ＊數值越小捲動越快；更改後需重新整理看板頁面才會生效。
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script src="admin.js"></script>
+</body>
+</html>

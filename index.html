@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>數位看板</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- 圖片播放層 -->
+  <img id="media-image" class="media-layer hidden" src="" alt="" />
+
+  <!-- 影片播放層 -->
+  <video id="media-video" class="media-layer hidden"
+         muted playsinline preload="auto"></video>
+
+  <!-- YouTube IFrame Player 容器 -->
+  <div id="yt-wrapper"></div>
+
+  <!-- 淡入淡出遮罩（初始遮蓋，第一個媒體就緒後淡出） -->
+  <div id="fade-overlay"></div>
+
+  <!-- 時鐘（右上角） -->
+  <div id="clock">
+    <span id="clock-time"></span>
+    <span id="clock-date"></span>
+  </div>
+
+  <!-- 跑馬燈（底部，預設隱藏） -->
+  <div id="ticker">
+    <div class="ticker-track">
+      <span id="ticker-a"></span>
+      <span id="ticker-b" aria-hidden="true"></span>
+    </div>
+  </div>
+
+  <!-- 載入提示 -->
+  <div id="loading">載入中...</div>
+
+  <!-- YouTube IFrame API（非同步載入） -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="script.js"></script>
+</body>
+</html>

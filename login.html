@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>數位看板 — 登入</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .shake { animation: shake 0.38s ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 antialiased">
+
+  <div class="w-full max-w-sm">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center bg-indigo-500 rounded-2xl w-16 h-16 mb-4
+                  shadow-lg shadow-indigo-200/60">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-800">數位看板後台</h1>
+      <p class="text-slate-400 text-sm mt-1">請登入以繼續操作</p>
+    </div>
+
+    <!-- Login Card -->
+    <div id="login-card" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+      <form id="login-form" class="space-y-5" novalidate>
+
+        <!-- Error Alert -->
+        <div id="error-msg"
+          class="hidden items-center gap-2 bg-red-50 border border-red-100
+                 rounded-xl px-4 py-3 text-sm text-red-600">
+          <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clip-rule="evenodd"/>
+          </svg>
+          帳號或密碼錯誤，請重新輸入。
+        </div>
+
+        <!-- Username -->
+        <div>
+          <label for="f-username"
+            class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">帳號</label>
+          <input id="f-username" type="text" autocomplete="username"
+            placeholder="請輸入帳號" required
+            class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700
+                   placeholder-slate-300 transition
+                   focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent" />
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label for="f-password"
+            class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">密碼</label>
+          <div class="relative">
+            <input id="f-password" type="password" autocomplete="current-password"
+              placeholder="請輸入密碼" required
+              class="w-full px-3.5 py-2.5 pr-11 border border-slate-200 rounded-xl text-sm text-slate-700
+                     placeholder-slate-300 transition
+                     focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent" />
+            <!-- 顯示/隱藏密碼按鈕 -->
+            <button type="button" id="toggle-pwd" title="顯示／隱藏密碼"
+              class="absolute right-3 top-1/2 -translate-y-1/2 p-0.5
+                     text-slate-400 hover:text-slate-600 transition-colors">
+              <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7
+                     -1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
+                 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm
+                 flex items-center justify-center gap-2 mt-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+          </svg>
+          登入
+        </button>
+
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-slate-400 mt-6">
+      Digital Signage CMS &nbsp;·&nbsp; v1.0
+    </p>
+
+  </div>
+
+  <script>
+    // 已登入則直接進入後台
+    if (sessionStorage.getItem('ds_auth') === 'true') {
+      location.replace('admin.html');
+    }
+
+    const VALID_USER = 'admin';
+    const VALID_PASS = '12345678';
+
+    const card     = document.getElementById('login-card');
+    const errorEl  = document.getElementById('error-msg');
+    const pwdInput = document.getElementById('f-password');
+    const eyeBtn   = document.getElementById('toggle-pwd');
+    const eyeIcon  = document.getElementById('eye-icon');
+
+    // ── 顯示 / 隱藏密碼 ──
+    const EYE_OPEN = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7
+           -1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+
+    const EYE_OFF = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7
+           a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243
+           M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29
+           M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7
+           a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>`;
+
+    eyeBtn.addEventListener('click', () => {
+      const isHidden = pwdInput.type === 'password';
+      pwdInput.type      = isHidden ? 'text' : 'password';
+      eyeIcon.innerHTML  = isHidden ? EYE_OFF : EYE_OPEN;
+    });
+
+    // ── 表單送出 ──
+    document.getElementById('login-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const user = document.getElementById('f-username').value.trim();
+      const pass = pwdInput.value;
+
+      if (user === VALID_USER && pass === VALID_PASS) {
+        sessionStorage.setItem('ds_auth', 'true');
+        location.replace('admin.html');
+      } else {
+        errorEl.classList.remove('hidden');
+        errorEl.classList.add('flex');
+        card.classList.add('shake');
+        card.addEventListener('animationend', () => card.classList.remove('shake'), { once: true });
+        pwdInput.value = '';
+        pwdInput.focus();
+      }
+    });
+  </script>
+
+</body>
+</html>

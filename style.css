@@ -1,0 +1,163 @@
+/* ── 全域重置 ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #000;
+  cursor: none;
+}
+
+/* ── 媒體層（img / video） ── */
+.media-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;       /* 填滿螢幕，裁切多餘部分 */
+  object-position: center;
+  background: #000;
+  z-index: 1;
+}
+
+.media-layer.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── YouTube 容器 ── */
+#yt-wrapper {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 1;
+  display: none;
+  overflow: hidden;
+}
+
+/* 使 YouTube iframe 填滿螢幕（16:9 cover 效果）*/
+#yt-wrapper > iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 56.25vw;       /* 100vw × 9/16 */
+  min-height: 100vh;
+  min-width: 177.78vh;   /* 100vh × 16/9 */
+  transform: translate(-50%, -50%);
+  border: none;
+}
+
+/* ── 淡入淡出遮罩 ──────────────────────────────────
+   初始 opacity:1（黑色覆蓋），第一個媒體就緒後由 JS
+   設為 0，切換廣告時再設回 1，形成平滑的黑幕淡變效果。  */
+#fade-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 2;
+  opacity: 1;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+/* ── 時鐘 ── */
+#clock {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 20;   /* 高於媒體(1)、遮罩(2)、載入提示(10) */
+  text-align: right;
+  color: #fff;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 0.6rem 1.1rem 0.65rem;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+#clock-time {
+  display: block;
+  font-size: 2.1rem;
+  font-weight: 200;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+#clock-date {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.6;
+  margin-top: 0.4rem;
+  letter-spacing: 0.12em;
+}
+
+/* ── 跑馬燈 ── */
+#ticker {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100vw;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 20;   /* 高於媒體(1)、遮罩(2)、載入提示(10) */
+  overflow: hidden;
+  display: none;       /* 預設隱藏；由 JS 加上 ticker-active class 顯示 */
+  align-items: center;
+}
+
+#ticker.ticker-active {
+  display: flex;
+}
+
+.ticker-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: ticker-scroll 30s linear infinite;
+  will-change: transform;
+}
+
+.ticker-track span {
+  display: inline-block;
+  color: #fff;
+  font-size: 1rem;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  padding: 0;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(100vw); }
+  to   { transform: translateX(-100%); }
+}
+
+/* ── 載入提示 ── */
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.5rem;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  z-index: 10;
+}
+
+#loading.hidden {
+  display: none;
+}
